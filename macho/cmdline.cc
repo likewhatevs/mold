@@ -261,10 +261,12 @@ void parse_nonpositional_args(Context<E> &ctx,
     } else if (read_flag("-v")) {
       SyncOut(ctx) << mold_version;
     } else {
-      if (args[i][0] == '-')
-        Fatal(ctx) << "unknown command line option: " << args[i];
-      remaining.push_back(std::string(args[i]));
-      i++;
+      if (args[i][0] == '-') {
+          Warn(ctx) << "unknown command line option: " << args[i];
+      } else {
+          remaining.push_back(std::string(args[i]));
+      }
+        i++;
     }
   }
 

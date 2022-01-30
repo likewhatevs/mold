@@ -77,6 +77,8 @@ void read_file(Context<E> &ctx, MappedFile<Context<E>> *mf) {
               << "but mold does not support LTO";
     ctx.llvm_lto = true;
     return;
+  case FileType::EMPTY:
+    Warn(ctx) << mf->name << ": empty file: " << type;
   default:
     Fatal(ctx) << mf->name << ": unknown file type: " << type;
   }
