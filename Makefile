@@ -147,9 +147,9 @@ $(MIMALLOC_LIB):
 
 $(TBB_LIB):
 	mkdir -p out/tbb
-	(cd out/tbb; cmake -G'Unix Makefiles' -DBUILD_SHARED_LIBS=OFF -DTBB_TEST=OFF -DCMAKE_CXX_FLAGS=-D__TBB_DYNAMIC_LOAD_ENABLED=0 -DTBB_STRICT=OFF ../../third-party/tbb)
+	(cd out/tbb; cmake -G'Unix Makefiles' -DBUILD_SHARED_LIBS=OFF -DTBB_TEST=OFF -DCMAKE_CXX_FLAGS=-D__TBB_DYNAMIC_LOAD_ENABLED=0 -DCMAKE_BUILD_TYPE=Release -DTBB_STRICT=OFF ../../third-party/tbb)
 	$(MAKE) -C out/tbb tbb
-	(cd out/tbb; ln -sf *_relwithdebinfo libs)
+	(cd out/tbb; ln -sf *_release libs)
 
 $(XXHASH_LIB):
 	$(MAKE) -C third-party/xxhash libxxhash.a

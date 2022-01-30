@@ -880,10 +880,12 @@ void parse_nonpositional_args(Context<E> &ctx,
       Warn(ctx) << "unknown command line option: -z " << args[1];
       args = args.subspan(2);
     } else {
-      if (args[0][0] == '-')
-        Fatal(ctx) << "unknown command line option: " << args[0];
-      remaining.push_back(args[0]);
-      args = args.subspan(1);
+      if (args[0][0] == '-'){
+          Fatal(ctx) << "unknown command line option: " << args[0];
+      } else {
+          remaining.push_back(args[0]);
+      }
+        args = args.subspan(1);
     }
   }
 
