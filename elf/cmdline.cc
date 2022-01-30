@@ -797,7 +797,7 @@ void parse_nonpositional_args(Context<E> &ctx,
           << "mold does not suppor `-b binary`. If you want to convert a binary"
           " file into an object file, use `objcopy -I binary -O elf64-x86-64"
           << " <input-file> <output-file.o>` instead.";
-      Fatal(ctx) << "unknown command line option: -b " << arg;
+      Warn(ctx) << "unknown command line option: -b " << arg;
     } else if (read_arg(ctx, args, arg, "auxiliary") ||
                read_arg(ctx, args, arg, "f")) {
       ctx.arg.auxiliary.push_back(arg);
@@ -881,7 +881,7 @@ void parse_nonpositional_args(Context<E> &ctx,
       args = args.subspan(2);
     } else {
       if (args[0][0] == '-'){
-          Fatal(ctx) << "unknown command line option: " << args[0];
+          Warn(ctx) << "unknown command line option: " << args[0];
       } else {
           remaining.push_back(args[0]);
       }
