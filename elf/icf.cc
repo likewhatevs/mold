@@ -99,7 +99,7 @@ static void uniquify_cies(Context<E> &ctx) {
 
 template <typename E>
 static bool is_eligible(InputSection<E> &isec) {
-  const ElfShdr<E> &shdr = isec.shdr;
+  const ElfShdr<E> &shdr = isec.shdr();
   std::string_view name = isec.name();
 
   bool is_alloc = (shdr.sh_flags & SHF_ALLOC);
@@ -257,7 +257,7 @@ static Digest compute_digest(Context<E> &ctx, InputSection<E> &isec) {
   };
 
   hash_string(isec.contents);
-  hash(isec.shdr.sh_flags);
+  hash(isec.shdr().sh_flags);
   hash(isec.get_fdes().size());
   hash(isec.get_rels(ctx).size());
 
@@ -352,6 +352,9 @@ static void gather_edges(Context<E> &ctx,
                          std::vector<u32> &edges,
                          std::vector<u32> &edge_indices) {
   Timer t(ctx, "gather_edges");
+
+  if (sections.empty())
+    return;
 
   std::vector<i64> num_edges(sections.size());
   edge_indices.resize(sections.size());
@@ -553,7 +556,7 @@ void icf_sections(Context<E> &ctx) {
     });
 
     // Since free'ing the map is slow, postpone it.
-    ctx.on_exit.push_back([=]() { delete map; });
+    ctx.on_exit.push_back([=] { delete map; });
   }
 
   if (ctx.arg.print_icf_sections)

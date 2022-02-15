@@ -10,17 +10,14 @@ mold="$(pwd)/mold"
 t=out/test/elf/$testname
 mkdir -p $t
 
-which ld.lld >& /dev/null || { echo skipped; exit 0; }
-
-cat <<EOF | $CC -flto -c -o $t/a.o -xc -
+cat <<EOF | $CC -o $t/a.o -c -xc -
 #include <stdio.h>
 int main() {
   printf("Hello world\n");
 }
 EOF
 
-$CC -B. -o $t/exe $t/a.o &> $t/log
-grep -q 'falling back' $t/log
-$t/exe | grep -q 'Hello world'
+$CC -B. -o $t/exe $t/a.o
+readelf -s $t/exe | grep -q 'SECTION LOCAL  DEFAULT'
 
 echo OK

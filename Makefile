@@ -1,3 +1,7 @@
+# If you want to enable ASAN, run `make` with the following options:
+#
+# make CXXFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address USE_MIMALLOC=0
+
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 LIBDIR = $(PREFIX)/lib
@@ -23,9 +27,8 @@ PKG_CONFIG = pkg-config
 # `STRIP=true` to run /bin/true instead of the strip command.
 STRIP = strip
 
-SRCS=$(wildcard *.cc elf/*.cc macho/*.cc)
-HEADERS=$(wildcard *.h elf/*.h macho/*.h)
-OBJS=$(SRCS:%.cc=out/%.o)
+SRCS = $(wildcard *.cc elf/*.cc macho/*.cc)
+OBJS = $(SRCS:%.cc=out/%.o)
 
 OS := $(shell uname -s)
 ARCH := $(shell uname -m)
@@ -41,10 +44,10 @@ CFLAGS = -O2
 CXXFLAGS = -O2
 
 MOLD_CXXFLAGS := -std=c++20 -fno-exceptions -fno-unwind-tables \
-                 -fno-asynchronous-unwind-tables -DMOLD_VERSION=\"1.0.3\" \
-                 -DLIBDIR="\"$(LIBDIR)\""
+                 -fno-asynchronous-unwind-tables -Ithird-party/xxhash \
+                 -DMOLD_VERSION=\"1.0.3\" -DLIBDIR="\"$(LIBDIR)\""
 
-MOLD_LDFLAGS := -pthread -lz -lm
+MOLD_LDFLAGS := -pthread -lz -lm -ldl
 
 GIT_HASH := $(shell [ -d .git ] && git rev-parse HEAD)
 ifneq ($(GIT_HASH),)
@@ -52,7 +55,6 @@ ifneq ($(GIT_HASH),)
 endif
 
 LTO = 0
-
 ifeq ($(LTO), 1)
   CXXFLAGS += -flto -O3
   LDFLAGS  += -flto
@@ -85,18 +87,10 @@ else
   MOLD_CXXFLAGS += -Ithird-party/tbb/include
 endif
 
-ifdef SYSTEM_XXHASH
-  MOLD_LDFLAGS += -lxxhash
-else
-  XXHASH_LIB = third-party/xxhash/libxxhash.a
-  MOLD_LDFLAGS += $(XXHASH_LIB)
-  MOLD_CXXFLAGS += -Ithird-party/xxhash
-endif
-
 ifeq ($(OS), Linux)
   ifeq ($(IS_ANDROID), 0)
     # glibc before 2.17 need librt for clock_gettime
-    MOLD_LDFLAGS += -lrt
+    MOLD_LDFLAGS += -Wl,-push-state -Wl,-as-needed -lrt -Wl,-pop-state
   endif
 endif
 
@@ -128,12 +122,12 @@ all: mold mold-wrapper.so
 
 -include $(SRCS:%.cc=out/%.d)
 
-mold: $(OBJS) $(MIMALLOC_LIB) $(TBB_LIB) $(XXHASH_LIB)
+mold: $(OBJS) $(MIMALLOC_LIB) $(TBB_LIB)
 	$(CXX) $(OBJS) -o $@ $(MOLD_LDFLAGS) $(LDFLAGS)
 	ln -sf mold ld
 	ln -sf mold ld64.mold
 
-mold-wrapper.so: elf/mold-wrapper.c Makefile
+mold-wrapper.so: elf/mold-wrapper.c
 	$(CC) $(DEPFLAGS) $(CFLAGS) -fPIC -shared -o $@ $< $(MOLD_WRAPPER_LDFLAGS) $(LDFLAGS)
 
 out/%.o: %.cc out/elf/.keep out/macho/.keep
@@ -153,9 +147,6 @@ $(TBB_LIB):
 	(cd out/tbb; cmake -G'Unix Makefiles' -DBUILD_SHARED_LIBS=OFF -DTBB_TEST=OFF -DCMAKE_CXX_FLAGS="$(CXXFLAGS) -D__TBB_DYNAMIC_LOAD_ENABLED=0" -DCMAKE_BUILD_TYPE=Release -DTBB_STRICT=OFF ../../third-party/tbb)
 	$(MAKE) -C out/tbb tbb
 	(cd out/tbb; ln -sf *_release libs)
-
-$(XXHASH_LIB):
-	$(MAKE) -C third-party/xxhash libxxhash.a
 
 test tests check: all
 ifeq ($(OS), Darwin)
@@ -195,6 +186,5 @@ uninstall:
 
 clean:
 	rm -rf *~ mold mold-wrapper.so out ld ld64.mold
-	$(MAKE) -C third-party/xxhash clean
 
 .PHONY: all test tests check clean

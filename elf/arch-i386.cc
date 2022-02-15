@@ -262,7 +262,6 @@ void InputSection<E>::apply_reloc_alloc(Context<E> &ctx, u8 *base) {
 template <>
 void InputSection<E>::apply_reloc_nonalloc(Context<E> &ctx, u8 *base) {
   std::span<ElfRel<E>> rels = get_rels(ctx);
-  i64 frag_idx = 0;
 
   for (i64 i = 0; i < rels.size(); i++) {
     const ElfRel<E> &rel = rels[i];
@@ -273,7 +272,7 @@ void InputSection<E>::apply_reloc_nonalloc(Context<E> &ctx, u8 *base) {
     u8 *loc = base + rel.r_offset;
 
     if (!sym.file) {
-      report_undef(ctx, sym);
+      report_undef(ctx, file, sym);
       continue;
     }
 
@@ -356,7 +355,7 @@ void InputSection<E>::apply_reloc_nonalloc(Context<E> &ctx, u8 *base) {
 
 template <>
 void InputSection<E>::scan_relocations(Context<E> &ctx) {
-  assert(shdr.sh_flags & SHF_ALLOC);
+  assert(shdr().sh_flags & SHF_ALLOC);
 
   this->reldyn_offset = file.num_dynrel * sizeof(ElfRel<E>);
   std::span<ElfRel<E>> rels = get_rels(ctx);
@@ -370,7 +369,7 @@ void InputSection<E>::scan_relocations(Context<E> &ctx) {
     Symbol<E> &sym = *file.symbols[rel.r_sym];
 
     if (!sym.file) {
-      report_undef(ctx, sym);
+      report_undef(ctx, file, sym);
       continue;
     }
 
@@ -440,7 +439,7 @@ void InputSection<E>::scan_relocations(Context<E> &ctx) {
       sym.flags |= NEEDS_TLSGD;
       break;
     case R_386_TLS_LDM:
-      sym.flags |= NEEDS_TLSLD;
+      ctx.needs_tlsld = true;
       break;
     case R_386_TLS_GOTDESC:
       if (!ctx.arg.relax || ctx.arg.shared)

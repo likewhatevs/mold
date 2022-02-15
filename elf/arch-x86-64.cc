@@ -481,7 +481,7 @@ void InputSection<E>::apply_reloc_nonalloc(Context<E> &ctx, u8 *base) {
     u8 *loc = base + rel.r_offset;
 
     if (!sym.file) {
-      report_undef(ctx, sym);
+      report_undef(ctx, file, sym);
       continue;
     }
 
@@ -565,7 +565,7 @@ void InputSection<E>::apply_reloc_nonalloc(Context<E> &ctx, u8 *base) {
 // need to scan relocations.
 template <>
 void InputSection<E>::scan_relocations(Context<E> &ctx) {
-  assert(shdr.sh_flags & SHF_ALLOC);
+  assert(shdr().sh_flags & SHF_ALLOC);
 
   this->reldyn_offset = file.num_dynrel * sizeof(ElfRel<E>);
   std::span<ElfRel<E>> rels = get_rels(ctx);
@@ -580,7 +580,7 @@ void InputSection<E>::scan_relocations(Context<E> &ctx) {
     u8 *loc = (u8 *)(contents.data() + rel.r_offset);
 
     if (!sym.file) {
-      report_undef(ctx, sym);
+      report_undef(ctx, file, sym);
       continue;
     }
 
@@ -691,7 +691,7 @@ void InputSection<E>::scan_relocations(Context<E> &ctx) {
       if (ctx.arg.relax && !ctx.arg.shared)
         i++;
       else
-        sym.flags |= NEEDS_TLSLD;
+        ctx.needs_tlsld = true;
       break;
     case R_X86_64_GOTTPOFF: {
       ctx.has_gottp_rel = true;

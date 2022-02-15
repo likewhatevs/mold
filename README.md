@@ -1,10 +1,10 @@
 # mold: A Modern Linker
 
 mold is a faster drop-in replacement for existing Unix linkers.
-It is several times faster than LLVM lld linker, the second-fastest
+It is several times faster than the LLVM lld linker, the second-fastest
 open-source linker which I originally created a few years ago.
-mold is created for increasing developer productivity by reducing
-build time especially in rapid debug-edit-rebuild cycles.
+mold is designed to increase developer productivity by reducing
+build time, especially in rapid debug-edit-rebuild cycles.
 
 Here is a performance comparison of GNU gold, LLVM lld, and mold for
 linking final debuginfo-enabled executables of major large programs
@@ -22,7 +22,7 @@ mold is so fast that it is only 2x _slower_ than `cp` on the same
 machine. Feel free to [file a bug](https://github.com/rui314/mold/issues)
 if you find mold is not faster than other linkers.
 
-mold currently supports x86-64, i386 and ARM64.
+mold currently supports x86-64, i386, ARM64 and 64-bit RISC-V.
 
 ## Why does the speed of linking matter?
 
@@ -89,6 +89,7 @@ a Docker environment. To do so, just run `./build-static.sh` in this
 directory instead of running `make -j$(nproc)`. The shell script creates a
 Ubuntu 20.04 Docker image, installs necessary tools and libraries to it,
 and builds mold as a statically-linked executable.
+(If `build-static.sh` script didn't work, please apply [3232c1f8](https://github.com/rui314/mold/commit/3232c1f8840885e5656c8cee7fab5f8e52926bd8).)
 
 `make test` depends on a few more packages. To install, run the following commands:
 
@@ -168,6 +169,8 @@ replace `argv[0]` with `mold` if it is `ld`, `ld.gold` or `ld.lld`.
 
 </details>
 
+<details><summary>Verify that you are using mold</summary>
+
 mold leaves its identification string in `.comment` section in an output
 file. You can print it out to verify that you are actually using mold.
 
@@ -180,6 +183,8 @@ String dump of section '.comment':
 ```
 
 If `mold` is in `.comment`, the file is created by mold.
+
+</details>
 
 ## Why is mold so fast?
 

@@ -161,13 +161,20 @@ private:
 inline u64 align_to(u64 val, u64 align) {
   if (align == 0)
     return val;
-  assert(std::has_single_bit(align));
+  assert(std::popcount(align) == 1);
   return (val + align - 1) & ~(align - 1);
 }
 
 inline u64 align_down(u64 val, u64 align) {
-  assert(std::has_single_bit(align));
+  assert(std::popcount(align) == 1);
   return val & ~(align - 1);
+}
+
+inline u64 next_power_of_two(u64 val) {
+  assert(val >> 63 == 0);
+  if (val == 0 || val == 1)
+    return 1;
+  return (u64)1 << (64 - std::countl_zero(val - 1));
 }
 
 template <typename T, typename Compare = std::less<T>>
@@ -297,7 +304,7 @@ public:
   void resize(i64 nbuckets) {
     this->~ConcurrentMap();
 
-    nbuckets = std::max<i64>(MIN_NBUCKETS, std::bit_ceil<u64>(nbuckets));
+    nbuckets = std::max<i64>(MIN_NBUCKETS, next_power_of_two(nbuckets));
 
     this->nbuckets = nbuckets;
     keys = (std::atomic<const char *> *)calloc(nbuckets, sizeof(keys[0]));
@@ -309,7 +316,7 @@ public:
     if (!keys)
       return {nullptr, false};
 
-    assert(std::has_single_bit<u64>(nbuckets));
+    assert(std::popcount<u64>(nbuckets) == 1);
     i64 idx = hash & (nbuckets - 1);
     i64 retry = 0;
 
@@ -575,24 +582,24 @@ private:
 
 // TarFile is a class to create a tar file.
 //
-// If you pass `--reproduce=repro.tar` to mold, mold collects all
-// input files and put them into `repro.tar`, so that it is easy to
+// If you pass `--repro` to mold, mold collects all input files and
+// put them into `<output-file-path>.repro.tar`, so that it is easy to
 // run the same command with the same command line arguments.
-class TarFile {
+class TarWriter {
 public:
-  TarFile(std::string basedir) : basedir(basedir) {}
+  static std::unique_ptr<TarWriter>
+  open(std::string output_path, std::string basedir);
+
+  ~TarWriter();
   void append(std::string path, std::string_view data);
-  void write_to(u8 *buf);
-  i64 size() const { return size_; }
 
 private:
   static constexpr i64 BLOCK_SIZE = 512;
 
-  std::string encode_path(std::string path);
+  TarWriter(FILE *out, std::string basedir) : out(out), basedir(basedir) {}
 
+  FILE *out = nullptr;
   std::string basedir;
-  std::vector<std::pair<std::string, std::string_view>> contents;
-  i64 size_ = BLOCK_SIZE * 2;
 };
 
 //
@@ -615,12 +622,17 @@ public:
     return std::string_view((char *)data, size);
   }
 
+  i64 get_offset() const {
+    return parent ? (data - parent->data + parent->get_offset()) : 0;
+  }
+
   std::string name;
   u8 *data = nullptr;
   i64 size = 0;
   i64 mtime = 0;
   bool given_fullpath = true;
   MappedFile *parent = nullptr;
+  int fd = -1;
 };
 
 template <typename C>
@@ -628,14 +640,14 @@ MappedFile<C> *MappedFile<C>::open(C &ctx, std::string path) {
   MappedFile *mf = new MappedFile;
   mf->name = path;
 
-  ctx.mf_pool.push_back(std::unique_ptr<MappedFile>(mf));
-
   if (path.starts_with('/') && !ctx.arg.chroot.empty())
     path = ctx.arg.chroot + "/" + path_clean(path);
 
   i64 fd = ::open(path.c_str(), O_RDONLY);
   if (fd == -1)
     return nullptr;
+
+  ctx.mf_pool.push_back(std::unique_ptr<MappedFile>(mf));
 
   struct stat st;
   if (fstat(fd, &st) == -1)
@@ -663,7 +675,7 @@ template <typename C>
 MappedFile<C> *MappedFile<C>::must_open(C &ctx, std::string path) {
   if (MappedFile *mf = MappedFile::open(ctx, path))
     return mf;
-  Fatal(ctx) << "cannot open " << path;
+  Fatal(ctx) << "cannot open " << path << ": " << errno_string();
 }
 
 template <typename C>
